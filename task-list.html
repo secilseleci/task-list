@@ -30,13 +30,30 @@
     .task label.checked {
       text-decoration: line-through;
     }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .filters span.active {
+      color: cornflowerblue;
+    }
+
+    .filters span {
+      margin-right: 7px;
+      font-size: 15px;
+      color: gray;
+      cursor: pointer;
+    }
   </style>
   <body>
     <div class="container">
       <div class="row">
         <div class="col-12">
           <div class="card">
-            <div class="card-header">Todo App</div>
+            <div class="card-header">To do App</div>
             <div class="card-body">
               <form>
                 <div class="input-group">
@@ -45,7 +62,7 @@
                     type="submit"
                     class="btn btn-primary"
                     id="btnAddNewTask">
-                    Ekle
+                    Add
                   </button>
                 </div>
               </form>
@@ -53,12 +70,17 @@
           </div>
 
           <div class="card mt-3">
-            <div class="card-header">
+            <div class="card-header controls">
+              <div class="filters">
+                <span class="active" id="all">All</span>
+                <span id="pending">To do</span>
+                <span id="completed">Done</span>
+              </div>
               <button
                 type="submit"
                 id="btnClear"
                 class="btn btn-danger btn-sm float-end">
-                Temizle
+                Clear all
               </button>
             </div>
             <ul id="task-list" class="list-group list-group-flush"></ul>
@@ -68,47 +90,56 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-      let gorevList = [
-        { id: "1", gorevad: "görev1", durum: "completed" },
-        { id: "2", gorevad: "görev2", durum: "completed" },
-        { id: "3", gorevad: "görev3", durum: "completed" },
-        { id: "4", gorevad: "görev4", durum: "completed" },
-      ];
+      let gorevList = [];
 
-      displayTasks();
+      //Tarayıcıda saklama
+      if (localStorage.getItem("gorevList") !== null) {
+        gorevList = JSON.parse(localStorage.getItem("gorevList"));
+      }
+
       let editId;
       let isEditTask = false;
-      let taskInput = document.querySelector("#txtTaskName");
+
+      const taskInput = document.querySelector("#txtTaskName");
+      const filters = document.querySelectorAll(".filters span");
+
+      displayTasks("all");
 
       //görevleri dinamik olarak listeleme fonksiyonu
-      function displayTasks() {
+      function displayTasks(filter) {
         ul = document.getElementById("task-list");
         ul.innerHTML = "";
 
-        if (gorevList == "") {
-          ul.innerHTML = "<p class='p-3'>Görev listeniz boş görünüyor.</p>";
-        }
-        for (let gorev of gorevList) {
-          let completed = gorev.durum == "completed" ? "checked" : "";
-          let li = `<li class="task list-group-item">
-                        <div class="form-check">
-                          <input type="checkbox" onclick="updateStatus(this)" id="${gorev.id}"  class="form-check-input" ${completed} />
-                          <label class="form-check-label  ${completed} "  for="${gorev.id}"> ${gorev.gorevad}</label>
-                        </div>
+        if (gorevList.length == 0) {
+          ul.innerHTML = "<p class='p-3'>Your task list is empty.</p>";
+        } else {
+          for (let gorev of gorevList) {
+            let completed = gorev.durum == "completed" ? "checked" : "";
+
+            if (filter == gorev.durum || filter == "all") {
+              let li = `<li class="task list-group-item">
+
+                                    <div class="form-check">
+                                      <input type="checkbox" onclick="updateStatus(this)" id="${gorev.id}"  class="form-check-input" ${completed} />
+                                      <label class="form-check-label  ${completed} "  for="${gorev.id}"> ${gorev.gorevad}</label>
+                                    </div>
 
 
-                      <div class="dropdown">
-                          <button class="btn btn-secondary dropdown-toggle" type="button"
-                          data-bs-toggle="dropdown" aria-expanded="false">
-                          <i class="fa-solid fa-ellipsis-vertical"></i>
-                          </button>
-                          <ul class="dropdown-menu">
-                           <li><a onclick="deleteTask(${gorev.id})" class="dropdown-item" href="#">Sil</a></li>
-                           <li><a onclick='editTask(${gorev.id},"${gorev.gorevad}")' class="dropdown-item" href="#"> Düzenle</a></li>
-                          </ul>
-                      </div>
-                      </li>`;
-          ul.insertAdjacentHTML("beforeend", li);
+                                  <div class="dropdown">
+                                      <button class="btn btn-secondary dropdown-toggle" type="button"
+                                      data-bs-toggle="dropdown" aria-expanded="false">
+                                      <i class="fa-solid fa-ellipsis-vertical"></i>
+                                      </button>
+                                      <ul class="dropdown-menu">
+                                       <li><a onclick="deleteTask(${gorev.id})" class="dropdown-item" href="#">Delete</a></li>
+                                       <li><a onclick='editTask(${gorev.id},"${gorev.gorevad}")' class="dropdown-item" href="#"> Update</a></li>
+                                      </ul>
+                                  </div>
+                                  </li>`;
+
+              ul.insertAdjacentHTML("beforeend", li);
+            }
+          }
         }
       }
 
@@ -124,16 +155,26 @@
           }
         });
 
+      //filtreler arası geçiş
+      for (let span of filters) {
+        span.addEventListener("click", function () {
+          document.querySelector("span.active").classList.remove("active");
+          span.classList.add("active");
+          displayTasks(span.id);
+        });
+      }
+
       //görevleri ekleme ve güncelleme fonksiyonu
       function newTask(event) {
         if (taskInput.value == "") {
-          alert("görev girmelisiniz");
+          alert("You must enter a task");
         } else {
           if (!isEditTask) {
             //ekleme
             gorevList.push({
               id: gorevList.length + 1,
               gorevad: taskInput.value,
+              durum: "pending",
             });
           } else {
             //güncelleme
@@ -146,9 +187,10 @@
           }
 
           taskInput.value = "";
-          displayTasks();
-          event.preventDefault();
+          displayTasks(document.querySelector("span.active").id);
+          localStorage.setItem("gorevList", JSON.stringify(gorevList));
         }
+        event.preventDefault();
       }
 
       //görevleri güncelleme fonskiyonu
@@ -179,7 +221,8 @@
 
         // let a = gorevList.findIndex((gorev) => (gorev.id = id));
         gorevList.splice(a, 1);
-        displayTasks();
+        displayTasks(document.querySelector("span.active").id);
+        localStorage.setItem("gorevList", JSON.stringify(gorevList));
       }
 
       //tüm görev listesini silme
@@ -187,6 +230,7 @@
         .querySelector("#btnClear")
         .addEventListener("click", function () {
           gorevList.splice(0, gorevList.length);
+          localStorage.setItem("gorevList", JSON.stringify(gorevList));
           displayTasks();
         });
 
@@ -207,6 +251,8 @@
             gorev.durum = durum;
           }
         }
+        displayTasks(document.querySelector("span.active").id);
+        localStorage.setItem("gorevList", JSON.stringify(gorevList));
       }
     </script>
   </body>
